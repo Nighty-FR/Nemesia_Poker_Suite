@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
 from PyQt5.QtCore import Qt, QRect, QTimer
 import pyautogui
+from database_cd import DatabaseManager
 
 
 class CardDetectorOverlay(QMainWindow):
@@ -22,15 +23,26 @@ class CardDetectorOverlay(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setGeometry(0, 0, self.screen_width, self.screen_height)
 
-        # Liste des rectangles et leurs labels
+        # Initialisation de la base de données
+        self.db_manager = DatabaseManager()
+
+        # Charger les rectangles depuis la base de données
+        loaded_rectangles = self.db_manager.load_rectangles()
         self.rectangles = [
-            {"rect": QRect(200, 100, 150, 100), "label": "Flop"},
-            {"rect": QRect(100, 300, 150, 100), "label": "Joueur 1"},
-            {"rect": QRect(300, 300, 150, 100), "label": "Joueur 2"},
-            {"rect": QRect(500, 300, 150, 100), "label": "Joueur 3"},
-            {"rect": QRect(700, 300, 150, 100), "label": "Joueur 4"},
-            {"rect": QRect(900, 300, 150, 100), "label": "Joueur 5"},
+            {"rect": QRect(x, y, width, height), "label": label}
+            for label, x, y, width, height in loaded_rectangles
         ]
+
+        # Ajouter des rectangles par défaut si aucun n'est présent
+        if not self.rectangles:
+            self.rectangles = [
+                {"rect": QRect(200, 100, 150, 100), "label": "Flop"},
+                {"rect": QRect(100, 300, 150, 100), "label": "Joueur 1"},
+                {"rect": QRect(300, 300, 150, 100), "label": "Joueur 2"},
+                {"rect": QRect(500, 300, 150, 100), "label": "Joueur 3"},
+                {"rect": QRect(700, 300, 150, 100), "label": "Joueur 4"},
+                {"rect": QRect(900, 300, 150, 100), "label": "Joueur 5"},
+            ]
 
         # Rectangle actif (pour drag ou resize)
         self.active_rectangle = None
@@ -103,6 +115,14 @@ class CardDetectorOverlay(QMainWindow):
             self.update()
 
     def mouseReleaseEvent(self, event):
+        if self.active_rectangle:
+            # Sauvegarder le rectangle modifié dans la base de données
+            for item in self.rectangles:
+                if item["rect"] == self.active_rectangle:
+                    rect = item["rect"]
+                    self.db_manager.save_rectangle(
+                        item["label"], rect.x(), rect.y(), rect.width(), rect.height()
+                    )
         self.dragging = False
         self.resizing = False
         self.active_rectangle = None

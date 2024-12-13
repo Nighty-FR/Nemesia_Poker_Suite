@@ -22,10 +22,14 @@ class CardDetectorOverlay(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setGeometry(0, 0, self.screen_width, self.screen_height)
 
-        # Liste des rectangles
+        # Liste des rectangles et leurs labels
         self.rectangles = [
-            QRect(200, 150, 150, 100),
-            QRect(400, 300, 150, 100),
+            {"rect": QRect(200, 100, 150, 100), "label": "Flop"},
+            {"rect": QRect(100, 300, 150, 100), "label": "Joueur 1"},
+            {"rect": QRect(300, 300, 150, 100), "label": "Joueur 2"},
+            {"rect": QRect(500, 300, 150, 100), "label": "Joueur 3"},
+            {"rect": QRect(700, 300, 150, 100), "label": "Joueur 4"},
+            {"rect": QRect(900, 300, 150, 100), "label": "Joueur 5"},
         ]
 
         # Rectangle actif (pour drag ou resize)
@@ -41,18 +45,32 @@ class CardDetectorOverlay(QMainWindow):
         self.timer.start(1000)  # Capture toutes les secondes
 
     def paintEvent(self, event):
-        # Dessiner les rectangles sur l'overlay
+        # Dessiner les rectangles et leurs labels
         painter = QPainter(self)
         pen = QPen(Qt.red, 2)
         brush = QBrush(QColor(255, 0, 0, 50))  # Fond semi-transparent
         painter.setPen(pen)
         painter.setBrush(brush)
 
-        for rect in self.rectangles:
+        for item in self.rectangles:
+            rect = item["rect"]
+            label = item["label"]
+
+            # Dessiner le rectangle
             painter.drawRect(rect)
 
+            # Ajouter le texte en dehors, en haut à gauche du rectangle
+            painter.setPen(Qt.yellow)  # Couleur du texte
+            font = painter.font()
+            font.setBold(True)
+            painter.setFont(font)
+            text_x = rect.x() - 10  # Légèrement à gauche du rectangle
+            text_y = rect.y() - 10  # Au-dessus du rectangle
+            painter.drawText(text_x, text_y, label)
+
     def mousePressEvent(self, event):
-        for rect in self.rectangles:
+        for item in self.rectangles:
+            rect = item["rect"]
             if rect.contains(event.pos()):
                 self.active_rectangle = rect
                 self.start_pos = event.pos()
@@ -99,13 +117,14 @@ class CardDetectorOverlay(QMainWindow):
         screenshot_np = np.array(screenshot)
 
         # Extraire les zones définies par les rectangles
-        for i, rect in enumerate(self.rectangles):
+        for i, item in enumerate(self.rectangles):
+            rect = item["rect"]
             x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
             cropped_zone = screenshot_np[y:y+h, x:x+w]
 
             # Sauvegarder ou traiter les zones capturées
-            cv2.imwrite(f"zone_{i + 1}.png", cv2.cvtColor(cropped_zone, cv2.COLOR_RGB2BGR))
-            print(f"Zone {i + 1} capturée et sauvegardée.")
+            cv2.imwrite(f"zone_{item['label']}.png", cv2.cvtColor(cropped_zone, cv2.COLOR_RGB2BGR))
+            print(f"Zone {item['label']} capturée et sauvegardée.")
 
 
 if __name__ == "__main__":

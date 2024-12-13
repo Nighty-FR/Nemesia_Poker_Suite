@@ -6,6 +6,7 @@ from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
 from PyQt5.QtCore import Qt, QRect, QTimer
 import pyautogui
 from database_cd import DatabaseManager
+from temp_file_manager import TempFileManager
 
 
 class CardDetectorOverlay(QMainWindow):
@@ -142,9 +143,13 @@ class CardDetectorOverlay(QMainWindow):
             x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
             cropped_zone = screenshot_np[y:y+h, x:x+w]
 
-            # Sauvegarder ou traiter les zones capturées
-            cv2.imwrite(f"zone_{item['label']}.png", cv2.cvtColor(cropped_zone, cv2.COLOR_RGB2BGR))
-            print(f"Zone {item['label']} capturée et sauvegardée.")
+            # Sauvegarder temporairement
+            temp_filename = f"zone_{item['label']}.png"
+            file_path = TempFileManager.save_temp_file(temp_filename, cv2.imencode('.png', cropped_zone)[1].tobytes())
+            print(f"Zone {item['label']} capturée temporairement : {file_path}")
+
+            # Supprimer après traitement
+            TempFileManager.delete_temp_file(file_path)
 
 
 if __name__ == "__main__":

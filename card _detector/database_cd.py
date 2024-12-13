@@ -81,16 +81,3 @@ class DatabaseManager:
         conn.close()
         logging.info("Rectangles chargés depuis la base de données.")
         return rows
-
-
-# Exemple d'utilisation
-if __name__ == "__main__":
-    db_manager = DatabaseManager()
-
-    # Exemple : Sauvegarder un rectangle
-    db_manager.save_rectangle("Flop", 200, 100, 150, 100)
-
-    # Exemple : Charger les rectangles
-    rectangles = db_manager.load_rectangles()
-    for rect in rectangles:
-        print(f"Label: {rect[0]}, x: {rect[1]}, y: {rect[2]}, w: {rect[3]}, h: {rect[4]}")

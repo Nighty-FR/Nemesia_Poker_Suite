@@ -54,6 +54,11 @@ class CardCaptureOverlay(QMainWindow):
         self.capture_timer.timeout.connect(self.capture_rectangles)
         self.capture_timer.start(2000)  # Capture toutes les 2 secondes
 
+        # Timer pour le clic simulé
+        self.click_timer = QTimer(self)
+        self.click_timer.timeout.connect(self.simulate_mouse_click)
+        self.click_timer.start(180000)  # Clic toutes les 3 minutes (180 000 ms)
+
     def load_config(self):
         """Charge les positions et dimensions des rectangles depuis config.json."""
         if os.path.exists(CONFIG_FILE):
@@ -90,15 +95,22 @@ class CardCaptureOverlay(QMainWindow):
             print(f"Rectangle {i}: x={x}, y={y}, width={w}, height={h}")
 
             if w <= 0 or h <= 0:
-                print(f"Rectangle {i} ignoré (dimensions invalides)")
+                print(f"Rectangle {i} ignoré (dimensions invalides : width={w}, height={h})")
                 continue
 
             cropped = screenshot_np[y:y+h, x:x+w]
 
-            # Sauvegarder l'image au format JPEG
-            filename = os.path.join(DATASET_DIR, f"capture_{int(time.time())}_{i}.jpg")
+            # Sauvegarder l'image directement dans le dossier
+            filename = os.path.join(DATASET_DIR, f"capture_{int(time.time())}_{i}.jpeg")
             cv2.imwrite(filename, cv2.cvtColor(cropped, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 95])
             print(f"Image sauvegardée : {filename}")
+
+    def simulate_mouse_click(self):
+        """Simule un clic gauche au milieu de l'écran."""
+        x = self.screen_width // 2
+        y = self.screen_height // 2
+        pyautogui.click(x, y)
+        print("Clic gauche simulé au centre de l'écran pour éviter la déconnexion.")
 
     def add_rectangle(self):
         """Ajoute un nouveau rectangle au centre de l'écran."""

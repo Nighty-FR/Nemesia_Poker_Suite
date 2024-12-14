@@ -3,17 +3,19 @@ import os
 import json
 import cv2
 import numpy as np
-import pyautogui
 import time
+from PIL import ImageGrab  # Pour remplacer pyautogui.screenshot
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton
 from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
 from PyQt5.QtCore import Qt, QRect, QTimer
+import ctypes  # Pour simuler un clic
 
 # Fichier de configuration pour sauvegarder les positions et dimensions
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
 # Dossier où les captures seront enregistrées
 DATASET_DIR = r"C:\Users\conta\Desktop\Images_Captured"
 os.makedirs(DATASET_DIR, exist_ok=True)  # Crée le dossier s'il n'existe pas
+
 
 class CardCaptureOverlay(QMainWindow):
     def __init__(self):
@@ -87,7 +89,7 @@ class CardCaptureOverlay(QMainWindow):
 
     def capture_rectangles(self):
         """Capture les zones définies par les rectangles."""
-        screenshot = pyautogui.screenshot()
+        screenshot = ImageGrab.grab()  # Utilisé à la place de pyautogui.screenshot
         screenshot_np = np.array(screenshot)
 
         for i, rect in enumerate(self.rectangles):
@@ -98,7 +100,7 @@ class CardCaptureOverlay(QMainWindow):
                 print(f"Rectangle {i} ignoré (dimensions invalides : width={w}, height={h})")
                 continue
 
-            cropped = screenshot_np[y:y+h, x:x+w]
+            cropped = screenshot_np[y:y + h, x:x + w]
 
             # Sauvegarder l'image directement dans le dossier
             filename = os.path.join(DATASET_DIR, f"capture_{int(time.time())}_{i}.jpeg")
@@ -109,7 +111,9 @@ class CardCaptureOverlay(QMainWindow):
         """Simule un clic gauche au milieu de l'écran."""
         x = self.screen_width // 2
         y = self.screen_height // 2
-        pyautogui.click(x, y)
+        ctypes.windll.user32.SetCursorPos(x, y)  # Déplace le curseur
+        ctypes.windll.user32.mouse_event(2, 0, 0, 0, 0)  # Appuie sur le clic gauche
+        ctypes.windll.user32.mouse_event(4, 0, 0, 0, 0)  # Relâche le clic gauche
         print("Clic gauche simulé au centre de l'écran pour éviter la déconnexion.")
 
     def add_rectangle(self):
@@ -128,6 +132,7 @@ class CardCaptureOverlay(QMainWindow):
             self.rectangles.pop()
             self.save_config()
             self.update()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -1,121 +1,66 @@
 import os
-import logging
-import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras import layers, models, optimizers
-from tensorflow.keras.applications import MobileNet
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import datasets, transforms
+from torchvision.models import resnet18, ResNet18_Weights
 
-# Configuration des logs
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("train_model.log"), logging.StreamHandler()]
-)
-
-# Paramètres
-BASE_DATASET_DIR = os.path.join(os.path.dirname(__file__), "dataset")
-MODEL_SAVE_PATH = os.path.join(os.path.dirname(__file__), "mobilenet_cards_model.h5")
-IMAGE_SIZE = (128, 128)
+# Configuration
+DATASET_DIR = r"C:\Users\conta\Desktop\dataset"  # Dossier contenant les images
+MODEL_SAVE_PATH = r"C:\Users\conta\Documents\python\model.pth"  # Chemin pour sauvegarder le modèle
+NUM_CLASSES = 56  # 52 cartes standards + cartes retournées + non-cartes + cartes combinées
 BATCH_SIZE = 32
 EPOCHS = 10
-NUM_CLASSES = 52  # Les 52 cartes
+LEARNING_RATE = 0.001
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-def prepare_data():
-    """
-    Prépare les données à partir du dataset en utilisant l'augmentation d'image.
-    Returns:
-        train_generator, val_generator: Générateurs pour l'entraînement et la validation.
-    """
-    # Générateur de données avec augmentation
-    data_gen = ImageDataGenerator(
-        rescale=1.0 / 255,  # Normalisation
-        validation_split=0.2,  # Fraction des données pour la validation
-        rotation_range=15,  # Rotation aléatoire
-        width_shift_range=0.1,  # Translation horizontale
-        height_shift_range=0.1,  # Translation verticale
-        shear_range=0.1,  # Distorsion
-        zoom_range=0.1,  # Zoom
-        horizontal_flip=True,  # Miroir horizontal
-        fill_mode="nearest"  # Remplissage des pixels manquants
-    )
+# Vérification du GPU
+print(f"Entraînement sur : {DEVICE}")
 
-    # Générateur d'entraînement
-    train_generator = data_gen.flow_from_directory(
-        BASE_DATASET_DIR,
-        target_size=IMAGE_SIZE,
-        batch_size=BATCH_SIZE,
-        class_mode="categorical",
-        subset="training"
-    )
+# Transformation des données
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
 
-    # Générateur de validation
-    val_generator = data_gen.flow_from_directory(
-        BASE_DATASET_DIR,
-        target_size=IMAGE_SIZE,
-        batch_size=BATCH_SIZE,
-        class_mode="categorical",
-        subset="validation"
-    )
+# Chargement des données
+dataset = datasets.ImageFolder(root=DATASET_DIR, transform=transform)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    return train_generator, val_generator
+# Charger un modèle pré-entraîné
+model = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+model.fc = nn.Linear(model.fc.in_features, NUM_CLASSES)  # Adapter pour 56 classes
+model = model.to(DEVICE)
 
-def build_model():
-    """
-    Construit le modèle MobileNet avec fine-tuning.
-    Returns:
-        model: Le modèle compilé.
-    """
-    # Charger MobileNet pré-entraîné
-    base_model = MobileNet(weights="imagenet", include_top=False, input_shape=(*IMAGE_SIZE, 3))
+# Définir la fonction de perte et l'optimiseur
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-    # Geler les couches du modèle de base
-    for layer in base_model.layers:
-        layer.trainable = False
+# Entraînement
+print("Début de l'entraînement...")
+for epoch in range(EPOCHS):
+    model.train()
+    running_loss = 0.0
+    for inputs, labels in dataloader:
+        inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
 
-    # Ajouter des couches personnalisées pour la classification des cartes
-    model = models.Sequential([
-        base_model,
-        layers.GlobalAveragePooling2D(),
-        layers.Dense(128, activation="relu"),
-        layers.Dropout(0.5),
-        layers.Dense(NUM_CLASSES, activation="softmax")
-    ])
+        # Réinitialiser les gradients
+        optimizer.zero_grad()
 
-    # Compiler le modèle
-    model.compile(
-        optimizer=optimizers.Adam(learning_rate=0.001),
-        loss="categorical_crossentropy",
-        metrics=["accuracy"]
-    )
+        # Forward pass
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
 
-    logging.info("Modèle MobileNet construit avec succès.")
-    return model
+        # Backward pass et optimisation
+        loss.backward()
+        optimizer.step()
 
-def train_model():
-    """
-    Entraîne le modèle MobileNet sur le dataset des cartes.
-    """
-    # Préparer les données
-    train_generator, val_generator = prepare_data()
+        running_loss += loss.item()
 
-    # Construire le modèle
-    model = build_model()
+    # Afficher la perte moyenne pour l'époque
+    print(f"Époque {epoch + 1}/{EPOCHS}, Perte : {running_loss / len(dataloader):.4f}")
 
-    # Entraîner le modèle
-    logging.info("Début de l'entraînement du modèle.")
-    history = model.fit(
-        train_generator,
-        epochs=EPOCHS,
-        validation_data=val_generator,
-        verbose=1
-    )
-
-    # Sauvegarder le modèle entraîné
-    model.save(MODEL_SAVE_PATH)
-    logging.info(f"Modèle entraîné et sauvegardé dans : {MODEL_SAVE_PATH}")
-
-    # Résultats
-    logging.info(f"Précision finale sur l'ensemble de validation : {history.history['val_accuracy'][-1]:.4f}")
-
-if __name__ == "__main__":
-    train_model()
+# Sauvegarder le modèle
+torch.save(model.state_dict(), MODEL_SAVE_PATH)
+print(f"Modèle sauvegardé à : {MODEL_SAVE_PATH}")

@@ -6,8 +6,9 @@ import os
 # Configuration
 DATASET_DIR = r"C:\Users\conta\Desktop\dataset"
 MODEL_PATH = r"C:\Users\conta\Documents\python\model_efficientnet.pth"
+WEIGHTS_PATH = r"C:\Users\conta\Documents\python\efficientnet_b0_rwightman-7f5810bc.pth"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-NUM_CLASSES = 56  # Nombre de classes
+NUM_CLASSES = 56  # Nombre de classes dans votre dataset
 
 # Transformation des données
 transform = transforms.Compose([
@@ -23,8 +24,13 @@ transform = transforms.Compose([
 dataset = datasets.ImageFolder(root=DATASET_DIR, transform=transform)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=True)
 
-# Chargement du modèle EfficientNet
-model = models.efficientnet_b0(pretrained=True)
+# Chargement du modèle EfficientNet avec des poids locaux
+print("Chargement du modèle EfficientNet avec des poids locaux...")
+model = models.efficientnet_b0(weights=None)  # Pas de téléchargement
+state_dict = torch.load(WEIGHTS_PATH)
+model.load_state_dict(state_dict)
+
+# Ajustement de la dernière couche pour le nombre de classes
 model.classifier[1] = nn.Linear(model.classifier[1].in_features, NUM_CLASSES)
 model = model.to(DEVICE)
 
@@ -55,4 +61,3 @@ for epoch in range(num_epochs):
 # Sauvegarde du modèle
 torch.save(model.state_dict(), MODEL_PATH)
 print(f"Modèle sauvegardé à : {MODEL_PATH}")
-

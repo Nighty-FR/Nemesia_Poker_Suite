@@ -1,136 +1,56 @@
-import sys
 import os
-import json
-import cv2
-import numpy as np
-import pyautogui
-import time
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton
-from PyQt5.QtGui import QPainter, QPen, QBrush, QColor
-from PyQt5.QtCore import Qt, QRect, QTimer
+import torch
+import torchvision.transforms as transforms
+from torchvision.models import resnet18
+from PIL import Image
+from torch.nn.functional import cosine_similarity
 
-# Fichier de configuration pour sauvegarder les positions et dimensions
-CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
-# Dossier où les captures seront enregistrées
-DATASET_DIR = r"C:\Users\conta\Desktop\Images_Captured"
-os.makedirs(DATASET_DIR, exist_ok=True)  # Crée le dossier s'il n'existe pas
+# Configuration
+IMAGE_DIR = r"C:\Users\conta\Desktop\Images_Captured"
+SIMILARITY_THRESHOLD = 0.03
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-class CardCaptureOverlay(QMainWindow):
-    def __init__(self):
-        super().__init__()
+# Modèle pré-entraîné
+model = resnet18(pretrained=True)
+model = torch.nn.Sequential(*list(model.children())[:-1])  # Retirer la dernière couche
+model.eval()
+model.to(DEVICE)
 
-        # Configuration de la fenêtre
-        screen = app.primaryScreen().geometry()
-        self.screen_width = screen.width()
-        self.screen_height = screen.height()
-        self.setWindowTitle("Overlay Transparent - Capture Dataset")
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setGeometry(0, 0, self.screen_width, self.screen_height)
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
 
-        # Chargement des rectangles depuis le fichier de configuration
-        self.rectangles = self.load_config()
+def extract_feature_vector(image_path):
+    image = Image.open(image_path).convert("RGB")
+    image = transform(image).unsqueeze(0).to(DEVICE)
+    with torch.no_grad():
+        feature_vector = model(image).flatten()
+    return feature_vector
 
-        # Rectangle actif
-        self.active_rectangle = None
-        self.dragging = False
-        self.resizing = False
-        self.start_pos = None
-
-        # Ajouter les boutons "+" et "-"
-        self.add_button = QPushButton("+", self)
-        self.add_button.setGeometry(10, 10, 40, 40)
-        self.add_button.clicked.connect(self.add_rectangle)
-
-        self.remove_button = QPushButton("-", self)
-        self.remove_button.setGeometry(60, 10, 40, 40)
-        self.remove_button.clicked.connect(self.remove_rectangle)
-
-        # Rendre les boutons repositionnables
-        self.dragging_button = None
-
-        # Timer pour captures automatiques
-        self.capture_timer = QTimer(self)
-        self.capture_timer.timeout.connect(self.capture_rectangles)
-        self.capture_timer.start(2000)  # Capture toutes les 2 secondes
-
-        # Timer pour le clic simulé
-        self.click_timer = QTimer(self)
-        self.click_timer.timeout.connect(self.simulate_mouse_click)
-        self.click_timer.start(180000)  # Clic toutes les 3 minutes (180 000 ms)
-
-    def load_config(self):
-        """Charge les positions et dimensions des rectangles depuis config.json."""
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, "r") as file:
-                data = json.load(file)
-                return [QRect(*rect) for rect in data]
-        else:
-            return []
-
-    def save_config(self):
-        """Sauvegarde les positions et dimensions des rectangles dans config.json."""
-        data = [[rect.x(), rect.y(), rect.width(), rect.height()] for rect in self.rectangles]
-        with open(CONFIG_FILE, "w") as file:
-            json.dump(data, file, indent=4)
-
-    def paintEvent(self, event):
-        """Dessine les rectangles sur l'overlay."""
-        painter = QPainter(self)
-        pen = QPen(Qt.red, 2)
-        brush = QBrush(QColor(255, 0, 0, 50))  # Fond semi-transparent
-        painter.setPen(pen)
-        painter.setBrush(brush)
-
-        for rect in self.rectangles:
-            painter.drawRect(rect)
-
-    def capture_rectangles(self):
-        """Capture les zones définies par les rectangles."""
-        screenshot = pyautogui.screenshot()
-        screenshot_np = np.array(screenshot)
-
-        for i, rect in enumerate(self.rectangles):
-            x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
-            print(f"Rectangle {i}: x={x}, y={y}, width={w}, height={h}")
-
-            if w <= 0 or h <= 0:
-                print(f"Rectangle {i} ignoré (dimensions invalides : width={w}, height={h})")
-                continue
-
-            cropped = screenshot_np[y:y+h, x:x+w]
-
-            # Sauvegarder l'image directement dans le dossier
-            filename = os.path.join(DATASET_DIR, f"capture_{int(time.time())}_{i}.jpeg")
-            cv2.imwrite(filename, cv2.cvtColor(cropped, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 95])
-            print(f"Image sauvegardée : {filename}")
-
-    def simulate_mouse_click(self):
-        """Simule un clic gauche au milieu de l'écran."""
-        x = self.screen_width // 2
-        y = self.screen_height // 2
-        pyautogui.click(x, y)
-        print("Clic gauche simulé au centre de l'écran pour éviter la déconnexion.")
-
-    def add_rectangle(self):
-        """Ajoute un nouveau rectangle au centre de l'écran."""
-        default_width, default_height = 100, 100
-        x = (self.screen_width - default_width) // 2
-        y = (self.screen_height - default_height) // 2
-        new_rect = QRect(x, y, default_width, default_height)
-        self.rectangles.append(new_rect)
-        self.save_config()
-        self.update()
-
-    def remove_rectangle(self):
-        """Supprime le dernier rectangle ajouté."""
-        if self.rectangles:
-            self.rectangles.pop()
-            self.save_config()
-            self.update()
+def find_and_remove_duplicates():
+    vectors = {}
+    files = [f for f in os.listdir(IMAGE_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    for file in files:
+        file_path = os.path.join(IMAGE_DIR, file)
+        if file_path in vectors:
+            continue
+        try:
+            current_vector = extract_feature_vector(file_path)
+            is_duplicate = False
+            for other_path, other_vector in vectors.items():
+                distance = 1 - cosine_similarity(current_vector.unsqueeze(0), other_vector.unsqueeze(0)).item()
+                if distance < SIMILARITY_THRESHOLD:
+                    print(f"Doublon détecté : {file_path}. Suppression...")
+                    os.remove(file_path)
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                vectors[file_path] = current_vector
+        except Exception as e:
+            print(f"Erreur lors du traitement de {file}: {e}")
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    overlay = CardCaptureOverlay()
-    overlay.show()
-    sys.exit(app.exec_())
+    print(f"Utilisation du périphérique : {DEVICE}")
+    find_and_remove_duplicates()

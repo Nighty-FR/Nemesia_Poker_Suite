@@ -1,23 +1,12 @@
 import os
 import cv2
-import numpy as np
 from skimage.metrics import structural_similarity as ssim
+import time
 
 # Dossier contenant les images à analyser
 IMAGE_DIR = r"C:\Users\conta\Desktop\Images_Captured"
+SIMILARITY_THRESHOLD = 0.97  # Seuil de similarité (97%)
 
-def load_images_from_folder(folder):
-    """Charge toutes les images d'un dossier."""
-    images = []
-    filenames = []
-    for filename in os.listdir(folder):
-        if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-            img_path = os.path.join(folder, filename)
-            img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-            if img is not None:
-                images.append(img)
-                filenames.append(img_path)
-    return images, filenames
 
 def compare_images(image1, image2):
     """Compare deux images à l'aide de SSIM."""
@@ -28,35 +17,56 @@ def compare_images(image1, image2):
     score, _ = ssim(gray1, gray2, full=True)
     return score
 
-def find_and_remove_duplicates(images, filenames, similarity_threshold=0.97):
-    """Trouve et supprime les doublons."""
-    duplicates = set()
-    num_images = len(images)
 
-    for i in range(num_images):
-        if i in duplicates:
-            continue
-        for j in range(i + 1, num_images):
-            if j in duplicates:
-                continue
-            similarity = compare_images(images[i], images[j])
-            if similarity > similarity_threshold:
-                print(f"Doublon trouvé : {filenames[j]} (similarité : {similarity:.2f})")
-                duplicates.add(j)
+def find_and_remove_duplicates():
+    """Surveille le dossier et supprime les doublons dès qu'ils sont détectés."""
+    processed_files = set()  # Stocke les fichiers déjà analysés
 
-    # Supprimer les fichiers doublons
-    for index in duplicates:
-        os.remove(filenames[index])
-        print(f"Image supprimée : {filenames[index]}")
+    while True:
+        # Charger tous les fichiers du dossier
+        files = [f for f in os.listdir(IMAGE_DIR) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
 
-def main():
-    images, filenames = load_images_from_folder(IMAGE_DIR)
-    if not images:
-        print("Aucune image trouvée dans le dossier.")
-        return
+        for file in files:
+            file_path = os.path.join(IMAGE_DIR, file)
 
-    print(f"{len(images)} images chargées depuis {IMAGE_DIR}.")
-    find_and_remove_duplicates(images, filenames)
+            if file_path in processed_files:
+                continue  # Ignorer les fichiers déjà traités
+
+            try:
+                # Charger l'image actuelle
+                current_image = cv2.imread(file_path, cv2.IMREAD_COLOR)
+
+                # Comparer avec les autres fichiers du dossier
+                for other_file in files:
+                    if file == other_file:
+                        continue  # Ne pas se comparer avec soi-même
+
+                    other_file_path = os.path.join(IMAGE_DIR, other_file)
+                    other_image = cv2.imread(other_file_path, cv2.IMREAD_COLOR)
+
+                    if other_image is None:
+                        continue
+
+                    similarity = compare_images(current_image, other_image)
+
+                    if similarity > SIMILARITY_THRESHOLD:
+                        print(f"Doublon détecté : {file} (similarité : {similarity:.2f}). Suppression...")
+                        os.remove(file_path)
+                        break
+
+                # Ajouter le fichier traité à la liste des fichiers analysés
+                processed_files.add(file_path)
+
+            except Exception as e:
+                print(f"Erreur lors du traitement de {file}: {e}")
+
+        # Pause pour éviter de monopoliser les ressources système
+        time.sleep(2)
+
 
 if __name__ == "__main__":
-    main()
+    if not os.path.exists(IMAGE_DIR):
+        print(f"Le dossier {IMAGE_DIR} n'existe pas.")
+    else:
+        print(f"Surveillance du dossier : {IMAGE_DIR}")
+        find_and_remove_duplicates()

@@ -23,6 +23,9 @@ class NemesiaPokerSuite(QMainWindow):
             "Unibet": ["Heads Up", "5 Max", "6 Max", "9 Max", "Tournoi"]
         }
 
+        # Texte pour le niveau d'aide
+        self.aide_levels = ["Préparation", "Optimisation", "Autopilotage"]
+
         # Charger la police personnalisée
         font_path = os.path.abspath("Trajan Pro Regular.ttf")
         self.font_id = QFontDatabase.addApplicationFont(font_path)
@@ -58,7 +61,7 @@ class NemesiaPokerSuite(QMainWindow):
         # SECTION : Curseurs (Nombre de tables et Niveau d'aide)
         self.slider_container = QHBoxLayout()
         self.add_slider_section("Nombre de tables", ["1", "2", "4", "6"], "tables")
-        self.add_slider_section("Niveau d'aide", ["Faible", "Moyen", "Élevé"], "aide")
+        self.add_slider_section("Niveau d'aide", self.aide_levels, "aide")
 
         # Ajout des widgets au layout principal
         self.main_layout.addWidget(self.title_label)
@@ -72,7 +75,7 @@ class NemesiaPokerSuite(QMainWindow):
         container = QVBoxLayout()
         label = QLabel(label_text)
         label.setAlignment(Qt.AlignCenter)
-        label.setFont(QFont(self.font_family, 14, QFont.Bold))
+        label.setFont(QFont(self.font_family, 12, QFont.Bold))  # Taille réduite
         label.setStyleSheet("color: #4ABFF7;")
 
         slider = QSlider(Qt.Horizontal)
@@ -83,13 +86,15 @@ class NemesiaPokerSuite(QMainWindow):
         slider.setStyleSheet(self.get_slider_style())
         slider.setFixedWidth(400)
 
-        # Ajout des graduations
+        # Alignement des graduations
         value_labels = QHBoxLayout()
+        value_labels.setSpacing(0)  # Évite les décalages
         for value in values:
             lbl = QLabel(value)
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setFont(QFont(self.font_family, 10))
+            lbl.setFont(QFont(self.font_family, 10))  # Taille ajustée
             lbl.setStyleSheet("color: #4ABFF7;")
+            lbl.setFixedWidth(100)  # Ajuste la largeur pour aligner
             value_labels.addWidget(lbl)
 
         container.addWidget(label)
@@ -150,9 +155,6 @@ class NemesiaPokerSuite(QMainWindow):
                 height: 20px;
                 margin: -5px 0;
                 border-radius: 10px;
-            }
-            QSlider::tick-position:above {
-                color: #4ABFF7;
             }
         """
 

@@ -58,10 +58,15 @@ class NemesiaPokerSuite(QMainWindow):
         self.style_buttons = {}
         self.main_layout.addLayout(self.style_layout)
 
-        # Curseurs
+        # SECTION : Curseurs (initialement cachée)
         self.slider_container = QHBoxLayout()
+        self.slider_section = QWidget()  # Conteneur pour les curseurs
+        self.slider_section_layout = QHBoxLayout(self.slider_section)
         self.add_slider_section("Nombre de tables", ["1", "2", "4", "6"], adjust_cursor=True)
         self.add_slider_section("Niveau d'aide", ["Préflop Assisté", "GTO Avancée", "Autopilotage"])
+        self.slider_section.setVisible(False)  # Masquer au début
+
+        self.slider_container.addWidget(self.slider_section)
         self.main_layout.addLayout(self.slider_container)
 
         self.setCentralWidget(self.main_widget)
@@ -83,12 +88,15 @@ class NemesiaPokerSuite(QMainWindow):
             self.style_layout.addWidget(btn)
 
     def on_style_selected(self, style_name):
-        """Met en surbrillance le style sélectionné."""
+        """Met en surbrillance le style sélectionné et affiche les curseurs."""
         self.selected_style = style_name
 
         # Mettre à jour le style des boutons de styles
         for style, btn in self.style_buttons.items():
             btn.setStyleSheet(get_selected_button_style() if style == style_name else get_unselected_button_style())
+
+        # Afficher les curseurs
+        self.slider_section.setVisible(True)
 
     def add_slider_section(self, label_text, values, adjust_cursor=False):
         """Ajoute une section avec un curseur."""
@@ -128,7 +136,7 @@ class NemesiaPokerSuite(QMainWindow):
             value_labels.addWidget(lbl)
 
         container.addLayout(value_labels)
-        self.slider_container.addLayout(container)
+        self.slider_section_layout.addLayout(container)
 
     def clear_style_buttons(self):
         """Supprime les styles de jeu affichés."""

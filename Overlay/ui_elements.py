@@ -8,6 +8,36 @@ from PyQt5.QtGui import QFont, QFontDatabase
 from PyQt5.QtCore import Qt
 from styles import load_stylesheet, get_slider_style, get_selected_button_style, get_unselected_button_style
 from Overlay_database import get_user_preferences, update_user_preferences
+import sqlite3
+import os
+
+# Chemin vers la base de données
+BASE_DIR = os.path.expanduser("~\\Documents\\Némésia Poker Suite")
+DB_PATH = os.path.join(BASE_DIR, "poker_bot.db")
+
+def create_overlay_table():
+    """Vérifie si la table overlay_table existe, sinon la crée."""
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS overlay_table (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_id INTEGER NOT NULL,
+                site TEXT NOT NULL,
+                style TEXT NOT NULL,
+                label TEXT NOT NULL,
+                x INTEGER NOT NULL,
+                y INTEGER NOT NULL,
+                width INTEGER NOT NULL,
+                height INTEGER NOT NULL
+            )
+        ''')
+        conn.commit()
+        print("Table 'overlay_table' vérifiée/créée.")
+
+# Créer la table au lancement de l'application
+create_overlay_table()
+
 
 
 class NemesiaPokerSuite(QMainWindow):

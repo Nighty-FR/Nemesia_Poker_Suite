@@ -153,7 +153,7 @@ class NemesiaPokerSuite(QMainWindow):
     def launch_range_manager(self):
         """Action pour le bouton Range Manager."""
         try:
-            executable_path = r"C:\Users\conta\Desktop\Némésia Poker Suite\NPS - Range Manager.exe"
+            executable_path = r"C:\\Users\\conta\\Desktop\\Némésia Poker Suite\\NPS - Range Manager.exe"
             if os.path.exists(executable_path):
                 subprocess.Popen(executable_path, shell=True)
             else:
@@ -224,3 +224,12 @@ class NemesiaPokerSuite(QMainWindow):
         button.setFixedSize(150, 40 if smaller else 50)
         button.setStyleSheet(get_unselected_button_style())
         return button
+
+
+if __name__ == "__main__":
+    from PyQt5.QtWidgets import QApplication
+    import sys
+    app = QApplication(sys.argv)
+    window = NemesiaPokerSuite()
+    window.show()
+    sys.exit(app.exec_())

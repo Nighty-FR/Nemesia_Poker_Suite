@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QSlider, QApplication
 )
 from PyQt5.QtGui import QFont, QFontDatabase
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt
 from styles import get_selected_button_style, get_unselected_button_style
 
 
@@ -14,16 +14,16 @@ class OverlayTable(QMainWindow):
         self.setFixedWidth(450)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowOpacity(0.5)  # Transparence de 50%
-
-        # Police personnalisée
-        font_path = os.path.abspath("Trajan Pro Regular.ttf")
-        self.font_id = QFontDatabase.addApplicationFont(font_path)
-        self.font_family = QFontDatabase.applicationFontFamilies(self.font_id)[0] if self.font_id != -1 else "Arial"
-
-        self.old_pos = None  # Pour le repositionnement
+        self.setWindowOpacity(0.5)
+        self.font_family = self.load_font()
+        self.old_pos = None  # Pour repositionner la fenêtre
         self.is_playing = False  # État Play/Pause
         self.initUI()
+
+    def load_font(self):
+        font_path = os.path.abspath("Trajan Pro Regular.ttf")
+        font_id = QFontDatabase.addApplicationFont(font_path)
+        return QFontDatabase.applicationFontFamilies(font_id)[0] if font_id != -1 else "Arial"
 
     def initUI(self):
         self.main_widget = QWidget(self)
@@ -69,10 +69,11 @@ class OverlayTable(QMainWindow):
         self.stop_button.clicked.connect(self.stop_overlay)
         button_layout.addWidget(self.stop_button)
 
-        # Config
-        self.config_button = QPushButton("Config")
+        # Configure
+        self.config_button = QPushButton("Configure")  # Bouton Configure rétabli
         self.config_button.setStyleSheet(get_unselected_button_style())
         self.config_button.setFixedSize(100, 40)
+        self.config_button.clicked.connect(self.open_config)
         button_layout.addWidget(self.config_button)
 
         self.main_layout.addLayout(button_layout)
@@ -96,7 +97,6 @@ class OverlayTable(QMainWindow):
                 background: #4ABFF7;
                 height: 10px;
                 border-radius: 5px;
-                border: none;
             }
             QSlider::handle:horizontal {
                 background: #4ABFF7;
@@ -135,8 +135,13 @@ class OverlayTable(QMainWindow):
             self.is_playing = True
 
     def stop_overlay(self):
-        """Arrête le programme."""
-        QApplication.quit()
+        """Ferme l'overlay et relance la fenêtre principale."""
+        self.close()
+        os.system("python ui_elements.py")
+
+    def open_config(self):
+        """Affiche un message temporaire pour le bouton Configure."""
+        QMessageBox.information(self, "Configuration", "Ouverture du menu de configuration...")
 
     # Gestion du déplacement avec clic droit
     def mousePressEvent(self, event):

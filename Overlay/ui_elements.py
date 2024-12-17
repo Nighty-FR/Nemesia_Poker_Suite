@@ -1,6 +1,6 @@
 import os
 from PyQt5.QtWidgets import (
-    QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QSlider
+    QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QSlider, QMessageBox
 )
 from PyQt5.QtGui import QFont, QFontDatabase
 from PyQt5.QtCore import Qt
@@ -58,45 +58,62 @@ class NemesiaPokerSuite(QMainWindow):
         self.style_buttons = {}
         self.main_layout.addLayout(self.style_layout)
 
-        # SECTION : Curseurs (initialement cachée)
+        # Curseurs
         self.slider_container = QHBoxLayout()
-        self.slider_section = QWidget()  # Conteneur pour les curseurs
-        self.slider_section_layout = QHBoxLayout(self.slider_section)
         self.add_slider_section("Nombre de tables", ["1", "2", "4", "6"], adjust_cursor=True)
         self.add_slider_section("Niveau d'aide", ["Préflop Assisté", "GTO Avancée", "Autopilotage"])
-        self.slider_section.setVisible(False)  # Masquer au début
-
-        self.slider_container.addWidget(self.slider_section)
         self.main_layout.addLayout(self.slider_container)
+
+        # Boutons principaux
+        self.add_main_buttons()
 
         self.setCentralWidget(self.main_widget)
 
-    def on_site_selected(self, site_name):
-        """Met en surbrillance le site sélectionné et affiche les styles correspondants."""
-        self.selected_site = site_name
+    def add_main_buttons(self):
+        """Ajoute les boutons principaux en bas de l'interface."""
+        button_layout = QHBoxLayout()
 
-        # Mettre à jour le style des boutons de sites
-        for site, btn in self.site_buttons.items():
-            btn.setStyleSheet(get_selected_button_style() if site == site_name else get_unselected_button_style())
+        # Espacement fixe entre les boutons
+        button_spacing = 25
 
-        # Mettre à jour les styles de jeu
-        self.clear_style_buttons()
-        for style in self.styles_by_site[site_name]:
-            btn = self.create_button(style, smaller=True)
-            btn.clicked.connect(lambda _, s=style: self.on_style_selected(s))
-            self.style_buttons[style] = btn
-            self.style_layout.addWidget(btn)
+        # Bouton "Range Manager"
+        self.range_manager_button = QPushButton("Range Manager")
+        self.range_manager_button.setStyleSheet(get_unselected_button_style())
+        self.range_manager_button.setFixedSize(200, 50)
+        self.range_manager_button.clicked.connect(self.launch_range_manager)
+        button_layout.addWidget(self.range_manager_button, alignment=Qt.AlignLeft)
+        button_layout.addSpacing(button_spacing)  # Espacement entre Range Manager et Overlay
 
-    def on_style_selected(self, style_name):
-        """Met en surbrillance le style sélectionné et affiche les curseurs."""
-        self.selected_style = style_name
+        # Espace flexible pour centrer le bouton "Lancer l'Overlay"
+        button_layout.addStretch(1)
+        self.launch_overlay_button = QPushButton("Lancer l'Overlay")
+        self.launch_overlay_button.setStyleSheet(get_selected_button_style())
+        self.launch_overlay_button.setFixedSize(200, 50)
+        self.launch_overlay_button.clicked.connect(self.launch_overlay)
+        button_layout.addWidget(self.launch_overlay_button, alignment=Qt.AlignCenter)
+        button_layout.addStretch(1)
 
-        # Mettre à jour le style des boutons de styles
-        for style, btn in self.style_buttons.items():
-            btn.setStyleSheet(get_selected_button_style() if style == style_name else get_unselected_button_style())
+        # Espacement fixe entre Overlay et Tracker
+        button_layout.addSpacing(button_spacing)
+        self.tracker_button = QPushButton("Tracker")
+        self.tracker_button.setStyleSheet(get_unselected_button_style())
+        self.tracker_button.setFixedSize(200, 50)
+        self.tracker_button.clicked.connect(self.launch_tracker)
+        button_layout.addWidget(self.tracker_button, alignment=Qt.AlignRight)
 
-        # Afficher les curseurs
-        self.slider_section.setVisible(True)
+        self.main_layout.addLayout(button_layout)
+
+    def launch_overlay(self):
+        """Action pour le bouton Lancer Overlay."""
+        QMessageBox.information(self, "Lancer Overlay", "L'Overlay sera ajouté ici dans une future mise à jour.")
+
+    def launch_range_manager(self):
+        """Action pour le bouton Range Manager."""
+        QMessageBox.information(self, "Range Manager", "Lancement du Range Manager...")
+
+    def launch_tracker(self):
+        """Action pour le bouton Tracker."""
+        QMessageBox.information(self, "Tracker", "Lancement du Tracker...")
 
     def add_slider_section(self, label_text, values, adjust_cursor=False):
         """Ajoute une section avec un curseur."""
@@ -130,13 +147,35 @@ class NemesiaPokerSuite(QMainWindow):
         for value in values:
             lbl = QLabel(value)
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setFont(QFont(self.font_family, 8))  # Police légèrement réduite
+            lbl.setFont(QFont(self.font_family, 8))
             lbl.setStyleSheet("color: #4ABFF7;")
-            lbl.setFixedWidth(100)  # Largeur fixe pour aligner proprement
+            lbl.setFixedWidth(100)
             value_labels.addWidget(lbl)
 
         container.addLayout(value_labels)
-        self.slider_section_layout.addLayout(container)
+        self.slider_container.addLayout(container)
+
+    def on_site_selected(self, site_name):
+        """Met en surbrillance le site sélectionné et affiche les styles correspondants."""
+        self.selected_site = site_name
+
+        # Mettre à jour le style des boutons de sites
+        for site, btn in self.site_buttons.items():
+            btn.setStyleSheet(get_selected_button_style() if site == site_name else get_unselected_button_style())
+
+        # Mettre à jour les styles de jeu
+        self.clear_style_buttons()
+        for style in self.styles_by_site[site_name]:
+            btn = self.create_button(style, smaller=True)
+            btn.clicked.connect(lambda _, s=style: self.on_style_selected(s))
+            self.style_buttons[style] = btn
+            self.style_layout.addWidget(btn)
+
+    def on_style_selected(self, style_name):
+        """Met en surbrillance le style sélectionné."""
+        self.selected_style = style_name
+        for style, btn in self.style_buttons.items():
+            btn.setStyleSheet(get_selected_button_style() if style == style_name else get_unselected_button_style())
 
     def clear_style_buttons(self):
         """Supprime les styles de jeu affichés."""

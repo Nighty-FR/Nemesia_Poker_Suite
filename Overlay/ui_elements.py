@@ -1,4 +1,5 @@
 import os
+import subprocess
 from PyQt5.QtWidgets import (
     QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QSlider, QMessageBox
 )
@@ -109,11 +110,19 @@ class NemesiaPokerSuite(QMainWindow):
 
     def launch_range_manager(self):
         """Action pour le bouton Range Manager."""
-        QMessageBox.information(self, "Range Manager", "Lancement du Range Manager...")
+        try:
+            executable_path = r"C:\Users\conta\Desktop\Némésia Poker Suite\NPS - Range Manager.exe"
+            if os.path.exists(executable_path):
+                subprocess.Popen(executable_path, shell=True)
+            else:
+                QMessageBox.warning(self, "Erreur", "Impossible de trouver 'NPS - Range Manager.exe'.")
+        except Exception as e:
+            QMessageBox.critical(self, "Erreur", f"Une erreur est survenue : {e}")
 
     def launch_tracker(self):
         """Action pour le bouton Tracker."""
-        QMessageBox.information(self, "Tracker", "Lancement du Tracker...")
+        QMessageBox.information(self, "Fonctionnalité à venir",
+                                "Cette fonctionnalité sera ajoutée dans une prochaine mise à jour.")
 
     def add_slider_section(self, label_text, values, adjust_cursor=False):
         """Ajoute une section avec un curseur."""

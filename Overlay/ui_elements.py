@@ -14,7 +14,7 @@ class NemesiaPokerSuite(QMainWindow):
         self.setWindowTitle("Némésia Poker Suite")
         self.setFixedWidth(1000)
         self.setStyleSheet(load_stylesheet())
-        self.selected_site = None
+        self.selected_site = "Winamax"  # Initialisation par défaut sur Winamax
         self.selected_style = None
 
         # Styles par site
@@ -68,6 +68,9 @@ class NemesiaPokerSuite(QMainWindow):
         # Boutons principaux
         self.add_main_buttons()
 
+        # Affichage des styles Winamax par défaut
+        self.on_site_selected("Winamax")
+
         self.setCentralWidget(self.main_widget)
 
     def add_main_buttons(self):
@@ -94,7 +97,7 @@ class NemesiaPokerSuite(QMainWindow):
         button_layout.addWidget(self.launch_overlay_button, alignment=Qt.AlignCenter)
         button_layout.addStretch(1)
 
-        # Espacement fixe entre Overlay et Tracker
+        # Bouton "Tracker"
         button_layout.addSpacing(button_spacing)
         self.tracker_button = QPushButton("Tracker")
         self.tracker_button.setStyleSheet(get_unselected_button_style())
@@ -143,13 +146,7 @@ class NemesiaPokerSuite(QMainWindow):
         slider.setTickPosition(QSlider.TicksAbove)
         slider.setStyleSheet(get_slider_style())
         slider.setFixedWidth(400)
-
-        # Décalage
-        slider_layout = QHBoxLayout()
-        if adjust_cursor:
-            slider_layout.setContentsMargins(10, 0, 0, 0)
-        slider_layout.addWidget(slider)
-        container.addLayout(slider_layout)
+        container.addWidget(slider)
 
         # Labels sous le curseur
         value_labels = QHBoxLayout()
@@ -167,8 +164,6 @@ class NemesiaPokerSuite(QMainWindow):
     def on_site_selected(self, site_name):
         """Met en surbrillance le site sélectionné et affiche les styles correspondants."""
         self.selected_site = site_name
-
-        # Mettre à jour le style des boutons de sites
         for site, btn in self.site_buttons.items():
             btn.setStyleSheet(get_selected_button_style() if site == site_name else get_unselected_button_style())
 
